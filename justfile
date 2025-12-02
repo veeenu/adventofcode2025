@@ -1,9 +1,10 @@
 cflags := "-O3 -ggdb -Wall -march=native"
+day := shell("date +%d")
 
 @today:
-  just r $(date +%d)
+  just r {{day}}
 
-@r day:
+@r day="{{day}}" input="":
   mkdir -p bin
   gcc day{{ day }}.c common.c {{ cflags }} -o bin/day{{ day }}
-  ./bin/day{{ day }}
+  ./bin/day{{ day }} {{ input }}

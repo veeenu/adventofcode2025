@@ -37,7 +37,7 @@ const char* next_line(const char* input) {
   return input + length + 1;
 }
 
-void part1(struct Input* input) {
+int part1(struct Input* input) {
   const char* ptr = input->input;
   int32_t dial = 50;
   int32_t count = 0;
@@ -54,9 +54,11 @@ void part1(struct Input* input) {
       count++;
     }
   }
+
+  return count;
 }
 
-void part2(struct Input* input) {
+int part2(struct Input* input) {
   const char* ptr = input->input;
   int32_t dial = 50;
   int32_t count = 0;
@@ -81,25 +83,12 @@ void part2(struct Input* input) {
       count--;
     }
   }
+
+  return count;
 }
 
-const char* sample =
-"L68\n"
-"L30\n"
-"R48\n"
-"L5\n"
-"R60\n"
-"L55\n"
-"L1\n"
-"L99\n"
-"R14\n"
-"L82\n";
-
-int main(void) {
-  struct Input input = download_day(__FILE__);
-  // struct Input input = {
-  //   .input = str,
-  //   .len = strlen(str)
-  // };
-  part2(&input);
+int main(int argc, const char** argv) {
+  struct Input input = get_input(argc, argv);
+  printf("%d\n", part1(&input));
+  printf("%d\n", part2(&input));
 }

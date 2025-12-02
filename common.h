@@ -10,4 +10,4 @@ struct Input {
   const uint64_t len;
 };
 
-struct Input download_day(const char* filepath);
+struct Input get_input(int argc, const char** argv);
