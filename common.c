@@ -81,3 +81,22 @@ struct Input get_input(int argc, const char **argv) {
 
   return (struct Input){.input = buf, .len = input_file.len};
 }
+
+void print_m128(__m128i in) {
+  u8 j[16];
+  _mm_store_si128((__m128i*)j, in);
+  for (int k = 0; k < 16; k++) {
+    printf("%02x", j[k]);
+    if (k % 2 == 1) { printf(" "); }
+  }
+  printf("\n");
+}
+
+void print_m256(__m256i in) {
+  u8 j[32];
+  _mm256_store_si256((__m256i*)j, in);
+  for (int k = 0; k < 32; k++) {
+    printf("%02x", j[k]);
+  }
+  printf("\n");
+}

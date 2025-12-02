@@ -4,7 +4,7 @@ day := shell("date +%d")
 @today:
   just r {{day}}
 
-@r day="{{day}}" input="":
+@r day input="":
   mkdir -p bin
   gcc day{{ day }}.c common.c {{ cflags }} -o bin/day{{ day }}
   ./bin/day{{ day }} {{ input }}
