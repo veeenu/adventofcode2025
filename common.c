@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "common.h"
+
 static int get_day(const char* filepath) {
   const char* name = strstr(filepath, "day");
   if (!name) {
@@ -18,7 +20,7 @@ static int get_day(const char* filepath) {
   return day;
 }
 
-const char* download_day(const char* filepath) {
+struct Input download_day(const char* filepath) {
   int day = get_day(filepath);
 
   struct stat st = {0};
@@ -60,5 +62,8 @@ const char* download_day(const char* filepath) {
   fread(buf, st.st_size, 1, fp);
   fclose(fp);
 
-  return buf;
+  return (struct Input){
+    .input = buf,
+    .len = st.st_size
+  };
 }

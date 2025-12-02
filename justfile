@@ -1,4 +1,4 @@
-cflags := "-mfpmath=sse -mmmx -msse -msse2 -O3 -Wall"
+cflags := "-O3 -ggdb -Wall -march=native"
 
 @today:
   just r $(date +%d)
