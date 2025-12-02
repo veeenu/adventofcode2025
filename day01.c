@@ -1,15 +1,5 @@
 #include "common.h"
 #include <emmintrin.h>
-#include <string.h>
-
-void pr(__m128i i) {
-  uint8_t j[16];
-  _mm_store_si128((__m128i*)j, i);
-  for (int k = 0; k < 16; k++) {
-    printf("%02x", j[k]);
-  }
-  printf("\n");
-}
 
 const int16_t POWERS[5][8] = {
   {0, 0, 0, 0, 0, 0, 0, 0},
@@ -47,7 +37,53 @@ const char* next_line(const char* input) {
   return input + length + 1;
 }
 
-const char* str =
+void part1(struct Input* input) {
+  const char* ptr = input->input;
+  int32_t dial = 50;
+  int32_t count = 0;
+
+  while(ptr < input->input + input->len) {
+    int32_t val = parse_line(ptr);
+    ptr = next_line(ptr);
+    dial += val;
+    dial %= 100;
+    if (dial < 0) {
+      dial += 100;
+    }
+    if (dial == 0) {
+      count++;
+    }
+  }
+}
+
+void part2(struct Input* input) {
+  const char* ptr = input->input;
+  int32_t dial = 50;
+  int32_t count = 0;
+
+  while(ptr < input->input + input->len) {
+    int32_t old_dial = dial;
+    int32_t val = parse_line(ptr);
+    ptr = next_line(ptr);
+    dial += val;
+    while (dial >= 100) {
+      dial -= 100;
+      count++;
+    }
+    while (dial < 0) {
+      dial += 100;
+      count++;
+    }
+    if (dial == 0) {
+      count++;
+    }
+    if (old_dial == 0) {
+      count--;
+    }
+  }
+}
+
+const char* sample =
 "L68\n"
 "L30\n"
 "R48\n"
@@ -65,25 +101,5 @@ int main(void) {
   //   .input = str,
   //   .len = strlen(str)
   // };
-
-  const char* ptr = input.input;
-  int32_t dial = 50;
-  int32_t count = 0;
-
-  while(ptr < input.input + input.len) {
-    int32_t val = parse_line(ptr);
-    ptr = next_line(ptr);
-    printf("%d + %d -> ", dial, val);
-    dial += val;
-    dial %= 100;
-    while (dial < 0) {
-      dial += 100;
-    }
-    printf("%d\n", dial);
-    if (dial == 0) {
-      count++;
-    }
-  }
-
-  printf("%d\n", count);
+  part2(&input);
 }
