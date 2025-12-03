@@ -1,3 +1,8 @@
 .cookie
 bin/
 input/
+
+
+# Added by cargo
+
+/target
