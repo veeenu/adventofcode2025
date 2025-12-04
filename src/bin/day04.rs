@@ -5,22 +5,22 @@ use std::simd::prelude::*;
 use adventofcode2025::get_input;
 type SimdVec = Simd<u8, 32>;
 
-fn index_of(bytes: &[u8], val: u8) -> Option<usize> {
-    let mut it = bytes.chunks(32);
-
-    let vals = SimdVec::splat(val);
-    let mut idx = 0;
-
-    for chunk in &mut it {
-        let chunk = SimdVec::load_or_default(chunk);
-        if let Some(fs) = vals.simd_eq(chunk).first_set() {
-            return Some(idx + fs);
-        }
-        idx += 32;
-    }
-
-    None
-}
+// fn index_of(bytes: &[u8], val: u8) -> Option<usize> {
+//     let mut it = bytes.chunks(32);
+//
+//     let vals = SimdVec::splat(val);
+//     let mut idx = 0;
+//
+//     for chunk in &mut it {
+//         let chunk = SimdVec::load_or_default(chunk);
+//         if let Some(fs) = vals.simd_eq(chunk).first_set() {
+//             return Some(idx + fs);
+//         }
+//         idx += 32;
+//     }
+//
+//     None
+// }
 
 fn to_mask(input: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(input.len());
@@ -211,11 +211,7 @@ mod tests {
     }
 }
 
-fn part1(input: &str) -> u64 {
-    let input = input
-        .lines()
-        .map(|l| to_mask(l.as_bytes()))
-        .collect::<Vec<_>>();
+fn compute_accessible_all(input: &[Vec<u8>]) -> Vec<Vec<u8>> {
     let mut output = Vec::with_capacity(input.len());
 
     output.push(compute_accessible(None, &input[0], Some(&input[1])));
@@ -235,13 +231,77 @@ fn part1(input: &str) -> u64 {
     ));
 
     output
-        .into_iter()
-        .map(|row| row.into_iter().map(|i| i as u64).sum::<u64>())
+}
+
+fn count_accessible(input: &[Vec<u8>]) -> u64 {
+    input
+        .iter()
+        .map(|row| row.iter().map(|&i| i as u64).sum::<u64>())
         .sum::<u64>()
 }
 
+fn remove(output: &mut [Vec<u8>], removed: &[Vec<u8>]) {
+    for (output, removed) in output.iter_mut().zip(removed.iter()) {
+        for (chunk_out, chunk_rem) in output.chunks_mut(32).zip(removed.chunks(32)) {
+            let out = SimdVec::load_or_default(chunk_out);
+            let rem = SimdVec::load_or_default(chunk_rem);
+            let rem = SimdVec::splat(1) - rem;
+            let out = out * rem;
+            if chunk_out.len() == 32 {
+                out.copy_to_slice(chunk_out);
+            } else {
+                let mut v = [0u8; 32];
+                out.copy_to_slice(&mut v);
+                chunk_out.copy_from_slice(&v[..chunk_out.len()]);
+            }
+        }
+    }
+}
+
+fn print_map(input: &[Vec<u8>]) {
+    for row in input {
+        for &col in row {
+            if col == 1 { print!("@") } else { print!(".") }
+        }
+        println!();
+    }
+}
+
+fn part1(input: &str) -> u64 {
+    let input = input
+        .lines()
+        .map(|l| to_mask(l.as_bytes()))
+        .collect::<Vec<_>>();
+
+    let accessible = compute_accessible_all(&input);
+    count_accessible(&accessible)
+}
+
 fn part2(input: &str) -> u64 {
-    0
+    let input = input
+        .lines()
+        .map(|l| to_mask(l.as_bytes()))
+        .collect::<Vec<_>>();
+
+    let mut output = input.to_vec();
+    let mut removed_count = 0;
+
+    loop {
+        let removed = compute_accessible_all(&output);
+        let accessible_count = count_accessible(&removed);
+        removed_count += accessible_count;
+
+        remove(&mut output, &removed);
+
+        println!();
+        print_map(&output);
+        println!("{accessible_count}");
+        if accessible_count == 0 {
+            break;
+        }
+    }
+
+    removed_count
 }
 
 fn main() {
