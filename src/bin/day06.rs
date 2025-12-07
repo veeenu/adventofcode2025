@@ -28,7 +28,7 @@ impl<'a, T: Iterator<Item = u64>> Iterator for Chunks<'a, T> {
     }
 }
 
-fn simd_operate(operand_columns: Vec<Vec<u64>>, operators: Vec<u64>) -> u64 {
+fn simd_operate(operand_columns: Vec<Vec<u64>>, operators: impl Iterator<Item = u64>) -> u64 {
     let zero = u64x8::splat(0);
 
     let mut result_columns = operand_columns
@@ -69,10 +69,10 @@ fn simd_operate(operand_columns: Vec<Vec<u64>>, operators: Vec<u64>) -> u64 {
 }
 
 fn part1(input: &str) -> u64 {
+    let num_lines = input.lines().count();
     let mut lines = input.lines().rev();
-    let operators = lines
-        .next()
-        .unwrap()
+    let first_line = lines.next().unwrap();
+    let operators = first_line
         .split_whitespace()
         .map(|c| match c {
             "*" => 1u64,
@@ -81,24 +81,25 @@ fn part1(input: &str) -> u64 {
         })
         .collect::<Vec<_>>();
 
+    let acc = operators
+        .iter()
+        .map(|_| Vec::with_capacity(num_lines))
+        .collect::<Vec<_>>();
+
     let operands = lines
         .rev()
         .map(|line| {
             line.split_whitespace()
                 .map(|num| num.parse::<u64>().unwrap())
         })
-        .fold(Vec::new(), |mut o, row| {
-            if o.is_empty() {
-                o.extend(row.map(|i| vec![i]));
-            } else {
-                for (col, i) in o.iter_mut().zip(row) {
-                    col.push(i);
-                }
+        .fold(acc, |mut o, row| {
+            for (col, i) in o.iter_mut().zip(row) {
+                col.push(i);
             }
             o
         });
 
-    simd_operate(operands, operators)
+    simd_operate(operands, operators.into_iter())
 }
 
 fn part2(input: &str) -> u64 {
