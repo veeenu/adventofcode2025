@@ -107,19 +107,25 @@ impl<'a> Iterator for RangeParser<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let input = self.input.take()?;
-        let next_nl = index_of(input, b'\n')?;
+        let (next_nl, end) = index_of(input, b'\n')
+            .map(|i| (i, false))
+            .unwrap_or_else(|| (input.len(), true));
         let next_dash = index_of(input, b'-')?;
 
         let num1 = parse_int(&input[0..next_dash])? as i64;
         let num2 = parse_int(&input[next_dash + 1..next_nl])? as i64;
 
-        self.input = Some(&input[next_nl + 1..]);
+        self.input = if !end {
+            Some(&input[next_nl + 1..])
+        } else {
+            None
+        };
 
         Some((num1, num2))
     }
 }
 
-fn part1_parse(input: &str) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+fn parse(input: &str) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
     let (ranges, numbers) = input.split_once("\n\n").unwrap();
 
     let mut ranges = RangeParser::new(ranges).collect::<Vec<_>>();
@@ -132,12 +138,12 @@ fn part1_parse(input: &str) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
 
     let (mut current_start, mut current_end) = ranges[0];
     for (next_start, next_end) in ranges.iter().copied().skip(1) {
-        (current_start, current_end) = if next_start <= current_end + 1 {
-            (current_start, next_end.max(current_end))
+        if next_start <= current_end + 1 {
+            current_end = next_end.max(current_end);
         } else {
             starts.push(current_start);
             ends.push(current_end);
-            (next_start, next_end)
+            (current_start, current_end) = (next_start, next_end)
         }
     }
 
@@ -173,7 +179,7 @@ fn simd_fresh(start: &[i64], end: &[i64], number: i64) -> bool {
 }
 
 fn part1(input: &str) -> u64 {
-    let (starts, ends, numbers) = part1_parse(input);
+    let (starts, ends, numbers) = parse(input);
 
     numbers
         .into_iter()
@@ -181,8 +187,35 @@ fn part1(input: &str) -> u64 {
         .count() as u64
 }
 
-fn part2(_input: &str) -> u64 {
-    0
+fn simd_count_ranges(start: &[i64], end: &[i64]) -> i64 {
+    let mut count = i64x8::splat(0);
+    let one = i64x8::splat(1);
+
+    let mut it_s = start.chunks_exact(8);
+    let mut it_e = end.chunks_exact(8);
+
+    for (s, e) in (&mut it_s).zip(&mut it_e) {
+        let s = i64x8::from_slice(s);
+        let e = i64x8::from_slice(e);
+        count = count + e - s + one;
+    }
+
+    let count = count.to_array().iter().copied().sum::<i64>();
+    let rem = it_e
+        .remainder()
+        .iter()
+        .copied()
+        .zip(it_s.remainder().iter().copied())
+        .map(|(e, s)| e - s + 1)
+        .sum::<i64>();
+
+    count + rem
+}
+
+fn part2(input: &str) -> u64 {
+    let (starts, ends, _) = parse(input);
+
+    simd_count_ranges(&starts, &ends) as u64
 }
 
 fn main() {
