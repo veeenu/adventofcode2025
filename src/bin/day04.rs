@@ -5,23 +5,6 @@ use std::{simd::prelude::*, time::Instant};
 use adventofcode2025::get_input;
 type SimdVec = Simd<u8, 32>;
 
-// fn index_of(bytes: &[u8], val: u8) -> Option<usize> {
-//     let mut it = bytes.chunks(32);
-//
-//     let vals = SimdVec::splat(val);
-//     let mut idx = 0;
-//
-//     for chunk in &mut it {
-//         let chunk = SimdVec::load_or_default(chunk);
-//         if let Some(fs) = vals.simd_eq(chunk).first_set() {
-//             return Some(idx + fs);
-//         }
-//         idx += 32;
-//     }
-//
-//     None
-// }
-
 fn to_mask(input: &[u8]) -> Vec<u8> {
     let mut out = vec![0u8; input.len()];
     let mut it_in = input.chunks_exact(32);
@@ -192,29 +175,6 @@ fn compute_accessible(before: Option<&[u8]>, current: &[u8], after: Option<&[u8]
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_to_mask() {
-        assert_eq!(to_mask(b"@.@.@."), vec![1, 0, 1, 0, 1, 0]);
-    }
-
-    #[test]
-    fn test_neighborhood() {
-        let s = b"..@@.@@@@.";
-        assert_eq!(
-            compute_neighborhood_x(&to_mask(s)),
-            vec![0, 1, 1, 1, 2, 1, 2, 2, 1, 1]
-        );
-        assert_eq!(
-            compute_neighborhood_y(&to_mask(s)),
-            vec![0, 1, 2, 2, 2, 2, 3, 3, 2, 1]
-        );
-    }
-}
-
 fn compute_accessible_all(input: &[Vec<u8>]) -> Vec<Vec<u8>> {
     let mut output = Vec::with_capacity(input.len());
 
@@ -329,4 +289,27 @@ fn main() {
     let elapsed = start.elapsed();
     println!("\x1b[32;1mPart 2:\x1b[0m {part2}");
     println!("Took {elapsed:?}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_mask() {
+        assert_eq!(to_mask(b"@.@.@."), vec![1, 0, 1, 0, 1, 0]);
+    }
+
+    #[test]
+    fn test_neighborhood() {
+        let s = b"..@@.@@@@.";
+        assert_eq!(
+            compute_neighborhood_x(&to_mask(s)),
+            vec![0, 1, 1, 1, 2, 1, 2, 2, 1, 1]
+        );
+        assert_eq!(
+            compute_neighborhood_y(&to_mask(s)),
+            vec![0, 1, 2, 2, 2, 2, 3, 3, 2, 1]
+        );
+    }
 }

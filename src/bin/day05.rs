@@ -42,27 +42,6 @@ fn parse_int(bytes: &[u8]) -> Option<u64> {
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use super::*;
-
-    #[test]
-    fn test_index_of() {
-        assert_eq!(index_of(b"....@@@@", b'@'), Some(4));
-        assert_eq!(index_of(b"....@@@@", b'.'), Some(0));
-
-        let s = b"................................@";
-        assert_eq!(index_of(s, b'@'), Some(32));
-        assert_eq!(s[32], b'@');
-
-        let s = b".................................@";
-        assert_eq!(s[33], b'@');
-        assert_eq!(index_of(s, b'@'), Some(33));
-    }
-}
-
 struct NumParser<'a> {
     input: Option<&'a [u8]>,
 }
@@ -232,4 +211,23 @@ fn main() {
     let elapsed = start.elapsed();
     println!("\x1b[32;1mPart 2:\x1b[0m {part2}");
     println!("Took {elapsed:?}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_index_of() {
+        assert_eq!(index_of(b"....@@@@", b'@'), Some(4));
+        assert_eq!(index_of(b"....@@@@", b'.'), Some(0));
+
+        let s = b"................................@";
+        assert_eq!(index_of(s, b'@'), Some(32));
+        assert_eq!(s[32], b'@');
+
+        let s = b".................................@";
+        assert_eq!(s[33], b'@');
+        assert_eq!(index_of(s, b'@'), Some(33));
+    }
 }
