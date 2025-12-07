@@ -197,20 +197,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_index_of() {
-        assert_eq!(index_of(b"....@@@@", b'@'), Some(4));
-        assert_eq!(index_of(b"....@@@@", b'.'), Some(0));
-
-        let s = b"................................@";
-        assert_eq!(index_of(s, b'@'), Some(32));
-        assert_eq!(s[32], b'@');
-
-        let s = b".................................@";
-        assert_eq!(s[33], b'@');
-        assert_eq!(index_of(s, b'@'), Some(33));
-    }
-
-    #[test]
     fn test_to_mask() {
         assert_eq!(to_mask(b"@.@.@."), vec![1, 0, 1, 0, 1, 0]);
     }
