@@ -32,7 +32,7 @@ fn to_mask(input: &[u8]) -> Vec<u8> {
     let zeros = SimdVec::splat(0);
 
     for (out_chunk, in_chunk) in (&mut it_out).zip(&mut it_in) {
-        let v = SimdVec::load_or_default(in_chunk)
+        let v = SimdVec::from_slice(in_chunk)
             .simd_eq(ats)
             .select(ones, zeros);
         v.copy_to_slice(out_chunk);
@@ -56,9 +56,9 @@ fn compute_neighborhood_y(input: &[u8]) -> Vec<u8> {
     out[0] = input[0] + input[1];
 
     while i + 32 < input.len() {
-        let left = SimdVec::load_or_default(&input[i - 1..]);
-        let center = SimdVec::load_or_default(&input[i..]);
-        let right = SimdVec::load_or_default(&input[i + 1..]);
+        let left = SimdVec::from_slice(&input[i - 1..]);
+        let center = SimdVec::from_slice(&input[i..]);
+        let right = SimdVec::from_slice(&input[i + 1..]);
         let neigh = left + right + center;
 
         neigh.copy_to_slice(&mut out[i..]);
@@ -86,8 +86,8 @@ fn compute_neighborhood_x(input: &[u8]) -> Vec<u8> {
     out[0] = input[1];
 
     while i + 32 < input.len() {
-        let left = SimdVec::load_or_default(&input[i - 1..]);
-        let right = SimdVec::load_or_default(&input[i + 1..]);
+        let left = SimdVec::from_slice(&input[i - 1..]);
+        let right = SimdVec::from_slice(&input[i + 1..]);
         let neigh = left + right;
 
         neigh.copy_to_slice(&mut out[i..]);
@@ -112,8 +112,8 @@ fn addv(out_v: &mut [u8], in_v: &[u8]) {
     let mut it_out = out_v.chunks_exact_mut(32);
 
     for (i, o) in (&mut it_in).zip(&mut it_out) {
-        let ii = SimdVec::load_or_default(i);
-        let oo = SimdVec::load_or_default(o);
+        let ii = SimdVec::from_slice(i);
+        let oo = SimdVec::from_slice(o);
         (ii + oo).copy_to_slice(o);
     }
 
@@ -130,8 +130,8 @@ fn mulv(out_v: &mut [u8], in_v: &[u8]) {
     let mut it_out = out_v.chunks_exact_mut(32);
 
     for (i, o) in (&mut it_in).zip(&mut it_out) {
-        let ii = SimdVec::load_or_default(i);
-        let oo = SimdVec::load_or_default(o);
+        let ii = SimdVec::from_slice(i);
+        let oo = SimdVec::from_slice(o);
         let vv: SimdVec = ii * oo;
 
         vv.copy_to_slice(o);
@@ -154,7 +154,7 @@ fn lt(out_v: &mut [u8]) {
     let mut it_out = out_v.chunks_exact_mut(32);
 
     for chunk in &mut it_out {
-        let v = SimdVec::load_or_default(chunk);
+        let v = SimdVec::from_slice(chunk);
         let r = v.simd_lt(cmp).select(one, zero);
 
         r.copy_to_slice(chunk);
@@ -260,19 +260,26 @@ fn count_accessible(input: &[Vec<u8>]) -> u64 {
 
 fn remove(output: &mut [Vec<u8>], removed: &[Vec<u8>]) {
     for (output, removed) in output.iter_mut().zip(removed.iter()) {
-        for (chunk_out, chunk_rem) in output.chunks_mut(32).zip(removed.chunks(32)) {
-            let out = SimdVec::load_or_default(chunk_out);
-            let rem = SimdVec::load_or_default(chunk_rem);
+        let mut it_out = output.chunks_exact_mut(32);
+        let mut it_rem = removed.chunks_exact(32);
+        for (chunk_out, chunk_rem) in (&mut it_out).zip(&mut it_rem) {
+            let out = SimdVec::from_slice(chunk_out);
+            let rem = SimdVec::from_slice(chunk_rem);
             let rem = SimdVec::splat(1) - rem;
             let out = out * rem;
-            if chunk_out.len() == 32 {
-                out.copy_to_slice(chunk_out);
-            } else {
-                let mut v = [0u8; 32];
-                out.copy_to_slice(&mut v);
-                chunk_out.copy_from_slice(&v[..chunk_out.len()]);
-            }
+
+            out.copy_to_slice(chunk_out);
         }
+
+        let chunk_out = it_out.into_remainder();
+        let chunk_rem = it_rem.remainder();
+        let out = SimdVec::load_or_default(chunk_out);
+        let rem = SimdVec::load_or_default(chunk_rem);
+        let rem = SimdVec::splat(1) - rem;
+        let out = out * rem;
+        let mut v = [0u8; 32];
+        out.copy_to_slice(&mut v);
+        chunk_out.copy_from_slice(&v[..chunk_out.len()]);
     }
 }
 
