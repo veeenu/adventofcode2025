@@ -229,6 +229,7 @@ fn remove(output: &mut [Vec<u8>], removed: &[Vec<u8>]) {
     }
 }
 
+#[allow(unused)]
 fn print_map(input: &[Vec<u8>]) {
     for row in input {
         for &col in row {

@@ -101,8 +101,56 @@ fn part1(input: &str) -> u64 {
     simd_operate(operands, operators)
 }
 
-fn part2(_input: &str) -> u64 {
-    0
+fn part2(input: &str) -> u64 {
+    let rows = input.lines().count();
+    let cols = input.lines().next().unwrap().len();
+
+    let input = input.as_bytes();
+
+    let getxy = |x, y| input[y * (cols + 1) + x];
+
+    let column = |x: usize| (0..rows - 1).map(move |y| getxy(x, y));
+
+    let problems = (0..cols)
+        .filter_map(|col| match getxy(col, rows - 1) {
+            c @ b'*' | c @ b'+' => {
+                let endcol = (col + 1..cols)
+                    .find(|&i| {
+                        let c = getxy(i, rows - 1);
+                        c == b'*' || c == b'+'
+                    })
+                    .unwrap_or(cols + 1);
+                Some((c as char, col, endcol - 1))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    problems
+        .into_iter()
+        .map(|(op, start_col, end_col)| {
+            let it = (start_col..end_col).map(column).map(|col| {
+                col.rev()
+                    .filter_map(|digit: u8| {
+                        if digit.is_ascii_digit() {
+                            Some(digit - b'0')
+                        } else {
+                            None
+                        }
+                    })
+                    .enumerate()
+                    .fold(0u64, |o, (idx, i)| o + 10u64.pow(idx as u32) * (i as u64))
+            });
+
+            if op == '*' {
+                it.product::<u64>()
+            } else if op == '+' {
+                it.sum::<u64>()
+            } else {
+                unreachable!()
+            }
+        })
+        .sum::<u64>()
 }
 
 fn main() {
