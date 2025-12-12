@@ -114,25 +114,84 @@ fn part1(input: &str) -> u64 {
     split_count as u64
 }
 
-fn compute_timelines_nonsimd(beams_current: &[u64], row: &[u8], beams_next: &mut [u64]) {
-    for idx_pass in row
-        .iter()
-        .copied()
-        .enumerate()
-        .filter_map(|(idx, c)| if c == b'.' { Some(idx) } else { None })
-    {
-        beams_next[idx_pass] = beams_current[idx_pass];
+fn compute_timelines(beams: &mut [u64], row: &[u8]) {
+    const LANES: usize = 64;
+
+    let splits = Simd::<u8, LANES>::splat(b'^');
+    let zeros = Simd::<u64, LANES>::splat(0);
+
+    let mut bound_left = beams[0];
+
+    if row[1] == b'^' {
+        beams[0] = beams[1];
     }
 
+    let mut i = 1;
+    while i + LANES < row.len() {
+        let bound_right = beams[i + LANES - 1];
+
+        let mut b_left = Simd::from_slice(&beams[i - 1..]);
+        let b_cen = Simd::from_slice(&beams[i..]);
+        let b_right = Simd::from_slice(&beams[i + 1..]);
+
+        b_left[0] = bound_left;
+
+        let m_left = Simd::from_slice(&row[i - 1..]).simd_eq(splits).cast();
+        let m_cen = Simd::from_slice(&row[i..]).simd_eq(splits).cast();
+        let m_right = Simd::from_slice(&row[i + 1..]).simd_eq(splits).cast();
+
+        let center = m_cen.select(zeros, b_cen);
+        let left = m_left.select(b_left, zeros);
+        let right = m_right.select(b_right, zeros);
+
+        (center + left + right).copy_to_slice(&mut beams[i..]);
+
+        bound_left = bound_right;
+
+        i += LANES;
+    }
+}
+
+// This compiles down to the following assembly, and suffers exactly 0
+// statistically significant time loss:
+//
+// example[6b01899e3b50edc5]::compute_timelines_nonsimd:
+//         push    rax
+//         mov     rax, rdi
+//         xor     r9d, r9d
+// .LBB1_1:
+//         cmp     rcx, r9
+//         je      .LBB1_8
+//         mov     rdi, r9
+//         inc     r9
+//         cmp     byte ptr [rdx + rdi], 94
+//         jne     .LBB1_1
+//         cmp     rdi, rsi
+//         jae     .LBB1_9
+//         lea     r8, [rdi - 1]
+//         cmp     r8, rsi
+//         jae     .LBB1_10
+//         mov     r8, qword ptr [rax + 8*rdi]
+//         add     qword ptr [rax + 8*rdi - 8], r8
+//         cmp     r9, rsi
+//         jae     .LBB1_7
+//         add     qword ptr [rax + 8*rdi + 8], r8
+//         mov     qword ptr [rax + 8*rdi], 0
+//         jmp     .LBB1_1
+// .LBB1_8:
+//         pop     rax
+//         ret
+#[allow(unused)]
+fn compute_timelines_nonsimd(beams: &mut [u64], row: &[u8]) {
     for idx_split in row
         .iter()
         .copied()
         .enumerate()
         .filter_map(|(idx, c)| if c == b'^' { Some(idx) } else { None })
     {
-        beams_next[idx_split - 1] += beams_current[idx_split];
-        beams_next[idx_split] = 0;
-        beams_next[idx_split + 1] += beams_current[idx_split];
+        beams[idx_split - 1] += beams[idx_split];
+        beams[idx_split + 1] += beams[idx_split];
+        beams[idx_split] = 0;
     }
 }
 
@@ -140,18 +199,16 @@ fn part2(input: &str) -> u64 {
     let input = input.as_bytes();
 
     let width = index_of(input, b'\n').unwrap();
-    let mut beams_current = vec![0u64; width];
-    let mut beams_next = vec![0u64; width];
-    let mut row = vec![0u8; width];
+    let mut beams = vec![0u64; width];
 
     let start_beam = index_of(input, b'S').unwrap();
-    beams_current[start_beam] = 1;
+    beams[start_beam] = 1;
 
     let mut pos = width + 1;
     loop {
-        row[..width].copy_from_slice(&input[pos..pos + width]);
-        compute_timelines_nonsimd(&beams_current, &row, &mut beams_next);
-        beams_current.copy_from_slice(&beams_next);
+        let row = &input[pos..pos + width];
+        // compute_timelines_nonsimd(&mut beams, row);
+        compute_timelines(&mut beams, row);
 
         pos += width + 1;
         if pos >= input.len() - 1 {
@@ -159,7 +216,7 @@ fn part2(input: &str) -> u64 {
         }
     }
 
-    beams_current.iter().sum::<u64>()
+    beams.iter().sum::<u64>()
 }
 
 fn main() {
