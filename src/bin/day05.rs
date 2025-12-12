@@ -1,33 +1,9 @@
 #![feature(portable_simd)]
 
 use std::simd::prelude::*;
-
 use std::time::Instant;
 
-use adventofcode2025::get_input;
-
-const LANES: usize = 64;
-
-fn index_of(bytes: &[u8], val: u8) -> Option<usize> {
-    let (head, body, tail) = bytes.as_simd::<LANES>();
-
-    if let Some(pos) = head.iter().position(|&c| c == val) {
-        return Some(pos);
-    }
-
-    let splat = Simd::splat(val);
-    for (idx, chunk) in body.iter().enumerate() {
-        if let Some(fs) = chunk.simd_eq(splat).first_set() {
-            return Some(head.len() + idx * LANES + fs);
-        }
-    }
-
-    if let Some(pos) = tail.iter().position(|&c| c == val) {
-        return Some(head.len() + body.len() * LANES + pos);
-    }
-
-    None
-}
+use adventofcode2025::*;
 
 fn parse_int(bytes: &[u8]) -> Option<u64> {
     // TODO simd

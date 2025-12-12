@@ -1,4 +1,30 @@
+#![feature(portable_simd)]
+
+use std::simd::prelude::*;
 use std::{env, fs, path::PathBuf, process::Command};
+
+pub const LANES: usize = 64;
+
+pub fn index_of(bytes: &[u8], val: u8) -> Option<usize> {
+    let (head, body, tail) = bytes.as_simd::<LANES>();
+
+    if let Some(pos) = head.iter().position(|&c| c == val) {
+        return Some(pos);
+    }
+
+    let splat = Simd::splat(val);
+    for (idx, chunk) in body.iter().enumerate() {
+        if let Some(fs) = chunk.simd_eq(splat).first_set() {
+            return Some(head.len() + idx * LANES + fs);
+        }
+    }
+
+    if let Some(pos) = tail.iter().position(|&c| c == val) {
+        return Some(head.len() + body.len() * LANES + pos);
+    }
+
+    None
+}
 
 pub fn get_input() -> String {
     if let Some(arg) = env::args().nth(1) {
