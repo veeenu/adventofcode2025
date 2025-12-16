@@ -17,7 +17,7 @@ fn points(input: &str) -> Vec<Point> {
 }
 
 fn area((x1, y1): (i64, i64), (x2, y2): (i64, i64)) -> i64 {
-    (y1 - y2 + 1).abs() * (x1 - x2 + 1).abs()
+    ((y1 - y2).abs() + 1) * ((x1 - x2).abs() + 1)
 }
 
 fn part1(input: &str) -> u64 {
@@ -40,8 +40,60 @@ fn part1(input: &str) -> u64 {
     areas.iter().last().unwrap().1 as u64
 }
 
-fn part2(_input: &str) -> u64 {
-    0
+fn rect_in_poly((x1, y1): Point, (x2, y2): Point, points: &[Point]) -> bool {
+    let (x1, x2) = (x1.min(x2), x1.max(x2));
+    let (y1, y2) = (y1.min(y2), y1.max(y2));
+
+    let mut i = 0;
+    let mut j = points.len() - 1;
+
+    while i < points.len() {
+        let (xi, yi) = points[i];
+        let (xj, yj) = points[j];
+
+        if xi > x1 && xi < x2 && yi > y1 && yi < y2 {
+            return false;
+        }
+
+        let (ya, yb) = (yi.min(yj), yi.max(yj));
+        if xi == xj && x1 < xi && x2 > xi && ya <= y1 && yb >= y2 {
+            return false;
+        }
+
+        let (xa, xb) = (xi.min(xj), xi.max(xj));
+        if yi == yj && y1 < yi && y2 > yi && xa <= x1 && xb >= x2 {
+            return false;
+        }
+
+        j = i;
+        i += 1;
+    }
+
+    true
+}
+
+fn part2(input: &str) -> u64 {
+    let points = points(input);
+
+    points
+        .iter()
+        .copied()
+        .enumerate()
+        .flat_map(|(idx, a)| {
+            points[idx + 1..]
+                .iter()
+                .copied()
+                .map(move |b| (a, b, area(a, b)))
+        })
+        .filter_map(|(p1, p2, a)| {
+            if rect_in_poly(p1, p2, &points) {
+                Some(a)
+            } else {
+                None
+            }
+        })
+        .max()
+        .unwrap() as u64
 }
 
 fn main() {
