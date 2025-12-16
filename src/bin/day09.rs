@@ -23,21 +23,13 @@ fn area((x1, y1): (i64, i64), (x2, y2): (i64, i64)) -> i64 {
 fn part1(input: &str) -> u64 {
     let points = points(input);
 
-    let mut areas = points
+    points
         .iter()
         .copied()
         .enumerate()
-        .flat_map(|(idx, a)| {
-            points[idx + 1..]
-                .iter()
-                .copied()
-                .map(move |b| ((a, b), area(a, b)))
-        })
-        .collect::<Vec<_>>();
-
-    areas.sort_by_key(|&(_, a)| a);
-
-    areas.iter().last().unwrap().1 as u64
+        .flat_map(|(idx, a)| points[idx + 1..].iter().copied().map(move |b| area(a, b)))
+        .max()
+        .unwrap() as u64
 }
 
 fn rect_in_poly((x1, y1): Point, (x2, y2): Point, points: &[Point]) -> bool {
