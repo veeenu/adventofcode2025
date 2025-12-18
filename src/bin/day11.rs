@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    rc::Rc,
     time::Instant,
 };
 
@@ -29,14 +30,14 @@ impl From<&str> for Graph {
 }
 
 impl Graph {
-    fn bfs(&self) -> usize {
+    fn bfs(&self) -> u64 {
         let mut reached = HashSet::new();
         let mut visited = HashSet::new();
         let mut q = VecDeque::new();
-        q.push_back(([b'y', b'o', b'u'], Vec::new()));
+        q.push_back((*b"you", Vec::new()));
 
         while let Some((node, path)) = q.pop_front() {
-            if node == [b'o', b'u', b't'] {
+            if &node == b"out" {
                 reached.insert(path);
                 continue;
             }
@@ -51,18 +52,49 @@ impl Graph {
             }
         }
 
-        reached.len()
+        reached.len() as u64
+    }
+
+    fn dfs2(&self) -> u64 {
+        let svr_dac = self.dfs2_inner(*b"svr", *b"dac", &mut HashMap::new());
+        let dac_fft = self.dfs2_inner(*b"dac", *b"fft", &mut HashMap::new());
+        let fft_out = self.dfs2_inner(*b"fft", *b"out", &mut HashMap::new());
+
+        let svr_fft = self.dfs2_inner(*b"svr", *b"fft", &mut HashMap::new());
+        let fft_dac = self.dfs2_inner(*b"fft", *b"dac", &mut HashMap::new());
+        let dac_out = self.dfs2_inner(*b"dac", *b"out", &mut HashMap::new());
+
+        svr_dac * dac_fft * fft_out + svr_fft * fft_dac * dac_out
+    }
+
+    fn dfs2_inner(&self, start: Node, end: Node, memo: &mut HashMap<Node, u64>) -> u64 {
+        if let Some(&cache) = memo.get(&start) {
+            return cache;
+        }
+
+        if start == end {
+            return 1;
+        }
+
+        let mut paths = 0u64;
+        if let Some(edges) = self.0.get(&start) {
+            for &edge in edges {
+                paths += self.dfs2_inner(edge, end, memo);
+            }
+        }
+
+        memo.insert(start, paths);
+
+        paths
     }
 }
 
 fn part1(input: &str) -> u64 {
-    let graph = Graph::from(input);
-
-    graph.bfs() as u64
+    Graph::from(input).bfs()
 }
 
-fn part2(_input: &str) -> u64 {
-    0
+fn part2(input: &str) -> u64 {
+    Graph::from(input).dfs2()
 }
 
 fn main() {
