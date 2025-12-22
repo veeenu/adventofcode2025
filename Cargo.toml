@@ -7,3 +7,5 @@ edition = "2024"
 debug = true
 
 [dependencies]
+rayon = "1.11.0"
+z3 = "0.19.6"

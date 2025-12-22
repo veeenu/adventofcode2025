@@ -4,11 +4,13 @@ use std::{
 };
 
 use adventofcode2025::get_input;
+use rayon::prelude::*;
+use z3::{Solver, ast::Int};
 
 #[derive(Debug)]
 struct Input {
     lights: u32,
-    buttons: Vec<u32>,
+    buttons: Vec<Vec<i32>>,
     joltages: Vec<u32>,
 }
 
@@ -34,10 +36,8 @@ fn parse(line: &str) -> Input {
             btn.trim_start_matches('(')
                 .trim_end_matches(')')
                 .split(',')
-                .fold(0u32, |o, i| {
-                    let pow = i.parse::<usize>().unwrap();
-                    o | 1 << pow
-                })
+                .filter_map(|i| i.parse::<i32>().ok())
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
 
@@ -57,6 +57,12 @@ fn parse(line: &str) -> Input {
 
 impl Input {
     fn bfs(&self) -> Option<u64> {
+        let buttons = self
+            .buttons
+            .iter()
+            .map(|buttons| buttons.iter().copied().fold(0u32, |o, i| o | 1 << i))
+            .collect::<Vec<_>>();
+
         let mut seen = HashSet::new();
         let mut q = VecDeque::new();
         q.push_back((0u32, 0u64));
@@ -67,7 +73,7 @@ impl Input {
                 return Some(count);
             }
 
-            for b in &self.buttons {
+            for b in &buttons {
                 let val = h ^ b;
                 if !seen.contains(&val) {
                     q.push_back((val, count + 1));
@@ -78,74 +84,62 @@ impl Input {
         None
     }
 
-    fn bfs2(&self) -> Option<u64> {
-        self.power_set()
-            .flat_map(|ops| self.bfs2_inner(&ops))
-            .take(100)
-            .min()
-    }
+    fn solve(&self) -> Option<u64> {
+        let presses: Vec<Int> = [
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen",
+            "seventeen",
+            "eighteen",
+            "nineteen",
+            "twenty",
+        ]
+        .iter()
+        .take(self.buttons.len())
+        .copied()
+        .map(Int::fresh_const)
+        .collect::<Vec<_>>();
 
-    fn bfs2_inner(&self, ops: &[Vec<usize>]) -> Option<u64> {
-        println!("Opping {ops:?}");
-        let mut seen = HashSet::new();
-        let mut q = VecDeque::new();
-        q.push_back(vec![0u32; ops.len()]);
-
-        while let Some(pushes) = q.pop_front() {
-            let mut joltages = vec![0u32; self.joltages.len()];
-
-            pushes.iter().zip(ops.iter()).for_each(|(&push, ops)| {
-                for &op in ops {
-                    joltages[op] += push;
-                }
-            });
-
-            if joltages == self.joltages {
-                let tot_pushes = pushes.iter().sum::<u32>() as u64;
-                if !seen.contains(&pushes) {
-                    seen.insert(pushes.clone());
-                    println!("{pushes:?} x {ops:?} = {joltages:?} ~ {:?}", self.joltages);
-                    println!("{tot_pushes} tot");
-                    return Some(tot_pushes);
-                }
-            }
-
-            for i in 0..ops.len() {
-                let mut pushes = pushes.clone();
-                pushes[i] += 1;
-
-                if joltages
-                    .iter()
-                    .zip(self.joltages.iter())
-                    .all(|(a, b)| a <= b)
-                {
-                    q.push_back(pushes);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn power_set<'a>(self: &'a Input) -> impl Iterator<Item = Vec<Vec<usize>>> + 'a {
-        (0..(1usize << self.buttons.len() as u32)).map(|bits| {
-            self.buttons
+        let solver = Solver::new();
+        for (col, joltage) in self.joltages.iter().copied().enumerate() {
+            let affecting_buttons = self
+                .buttons
                 .iter()
                 .enumerate()
-                .filter_map(move |(idx, &b)| {
-                    if (1 << idx) & bits != 0 {
-                        Some(b)
+                .filter_map(|(idx, button)| {
+                    if button.contains(&(col as i32)) {
+                        Some(presses[idx].clone())
                     } else {
                         None
                     }
                 })
-                .map(|bits| {
-                    (0..16)
-                        .filter(|i| ((bits >> i) & 1) == 1)
-                        .collect::<Vec<usize>>()
-                })
-                .collect::<Vec<_>>()
-        })
+                .collect::<Vec<_>>();
+
+            solver.assert(Int::add(&affecting_buttons).eq(joltage));
+        }
+
+        for press in &presses {
+            solver.assert(press.ge(0));
+        }
+
+        solver
+            .solutions(presses, false)
+            .map(|sol| sol.iter().filter_map(Int::as_u64).sum::<u64>())
+            .min()
     }
 }
 
@@ -158,7 +152,12 @@ fn part1(input: &str) -> u64 {
 fn part2(input: &str) -> u64 {
     let lines = input.lines().map(parse).collect::<Vec<_>>();
 
-    lines.iter().filter_map(Input::bfs2).sum::<u64>()
+    lines
+        .par_iter()
+        .map(|s: &Input| s.solve())
+        .inspect(|i| println!("{i:?}"))
+        .flatten()
+        .sum::<u64>()
 }
 
 fn main() {
